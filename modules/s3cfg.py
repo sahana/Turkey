@@ -114,6 +114,7 @@ class S3Config(Storage):
              "vi": ["unifont", "unifont"],
              "zh-cn": ["unifont", "unifont"],
              "zh-tw": ["unifont", "unifont"],
+             "en": ["unifont", "unifont"],
              }
 
     def __init__(self):
