@@ -62,10 +62,10 @@ def person():
 
             # Adapt CRUD strings to context
             s3.crud_strings["pr_person"] = Storage(
-                label_create = T("Create Case"),
+                label_create = T("Create Record"),
                 title_display = T("Case Details"),
-                title_list = T("Cases"),
-                title_update = T("Edit Case Details"),
+                title_list = T("All Records"),
+                title_update = T("Edit Record Details"),
                 label_list_button = T("List Cases"),
                 label_delete_button = T("Delete Case"),
                 msg_record_created = T("Case added"),
@@ -147,17 +147,7 @@ def person():
                                     #label = T("Case Status"),
                                     options = s3db.dvr_case_status_filter_opts,
                                     sort = False,
-                                    ),
-                    S3OptionsFilter("person_details.nationality",
-                                    ),
-                    S3OptionsFilter("case_flag_case.flag_id",
-                                    label = T("Flags"),
-                                    options = s3_get_filter_opts("dvr_case_flag",
-                                                                 translate = True,
-                                                                 ),
-                                    cols = 3,
-                                    hidden = True,
-                                    ),
+                                    ),                    
                     ]
 
                 resource.configure(crud_form = crud_form,
@@ -356,6 +346,11 @@ def case_type():
 
     return s3_rest_controller()
 
+def case_activity_type():
+    """ Case Activity Types: RESTful CRUD Controller """
+
+    return s3_rest_controller()
+
 # -----------------------------------------------------------------------------
 def allowance():
     """ Allowances: RESTful CRUD Controller """
@@ -433,5 +428,38 @@ def beneficiary_type():
     """ Beneficiary Types: RESTful CRUD Controller """
 
     return s3_rest_controller()
+
+# -----------------------------------------------------------------------------
+def course():
+    """ Courses Controller """
+    
+    def prep(r):
+        return True
+    s3.prep = prep
+
+    if not auth.s3_has_role(ADMIN):
+        s3.filter = auth.filter_by_root_org(s3db.hrm_course)
+
+    return s3_rest_controller("hrm", resourcename,
+                              rheader=s3db.hrm_rheader,
+                              csv_template=("hrm", "course"),
+                              csv_stylesheet=("hrm", "course.xsl"),
+                              )
+# -----------------------------------------------------------------------------
+def training():
+    """ Training Controller - used for Searching for Participants """
+
+    # Filter to just Volunteers
+    
+    return s3db.hrm_training_controller()
+
+# -----------------------------------------------------------------------------
+def training_event():
+    """ Training Events Controller """
+
+    table = s3db.hrm_training
+    table.person_id.widget = S3PersonAutocompleteWidget(controller="pr")
+
+    return s3db.hrm_training_event_controller()
 
 # END =========================================================================

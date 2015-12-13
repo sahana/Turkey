@@ -1051,6 +1051,12 @@ class S3PersonModel(S3Model):
                             dvr_note = {"name": "case_note",
                                         "joinby": "person_id",
                                         },
+                            dvr_case_type = {"link": "dvr_case_type_case",
+                                                 "joinby": "person_id",
+                                                 "key": "case_type_id",
+                                                 "actuate": "link",
+                                                 "autodelete": False,
+                                                 },
                             # Evacuee Registry
                             evr_case = {"joinby": "person_id",
                                         "multiple": False,
@@ -3316,7 +3322,7 @@ class S3PersonIdentityModel(S3Model):
         pr_id_type_opts = {1:  T("Passport"),
                            2:  T("National ID Card"),
                            3:  T("Driving License"),
-                           #4: T("Credit Card"),
+                           50: T("AFAD Number"),
                            99: T("other")
                            }
 

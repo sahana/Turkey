@@ -7690,9 +7690,9 @@ def hrm_training_event_controller():
         multiple controllers for unified menus
     """
 
-    if current.session.s3.hrm.mode is not None:
-        current.session.error = T("Access denied")
-        redirect(URL(f="index"))
+    #if current.session.s3.hrm.mode is not None:
+    #    current.session.error = T("Access denied")
+    #    redirect(URL(f="index"))
 
     s3 = current.response.s3
 

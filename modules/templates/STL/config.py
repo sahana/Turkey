@@ -184,55 +184,7 @@ def config(settings):
 
     settings.customise_pr_contact_resource = customise_pr_contact_resource
 
-    # -------------------------------------------------------------------------
-    #def customise_pr_person_resource(r, tablename):
-
-        #s3db = current.s3db
-        #table = s3db.pr_person_details
-        #table.place_of_birth.writable = True
-        #table.mother_name.readable = True
-        #table.father_name.readable = True
-        #import s3db.tr
-        #s3db.add_components("pr_person",
-        #                    tr_identity = "person_id",
-        #                    )
-        #settings.org.dependent_fields = \
-        #    {"pr_person_details.mother_name" : None, # Show for all
-        #     "pr_person_details.father_name" : None, # Show for all
-        #     }
-        #from s3 import S3SQLCustomForm
-        #crud_form = S3SQLCustomForm("first_name",
-        #                            "last_name",
-        #                            "date_of_birth",
-        #                            #"initials",
-        #                            #"preferred_name",
-        #                            #"local_name",
-        #                            "gender",
-        #                            "person_details.occupation",
-        #                            "person_details.marital_status",
-        #                            "person_details.number_children",
-        #                            #"person_details.nationality",
-        #                            #"person_details.religion",
-        #                            "person_details.mother_name",
-        #                            "person_details.father_name",
-        #                            #"person_details.company",
-        #                            #"person_details.affiliations",
-        #                            "person_details.criminal_record",
-        #                            "person_details.military_service",
-        #                            "comments",
-        #                            )
-
-        #s3db.configure("pr_person",
-        #               crud_form = crud_form,
-        #               )
-        #s3db.configure("pr_address",
-        #               realm_entity = pr_component_realm_entity,
-        #               )
-        #s3db.configure("pr_contact",
-        #               realm_entity = pr_component_realm_entity,
-        #               )
-
-    #settings.customise_pr_person_resource = customise_pr_person_resource
+   
 
     # -------------------------------------------------------------------------
     def vol_rheader(r):
@@ -270,28 +222,30 @@ def config(settings):
         # Custom prep
         standard_prep = s3.prep
         def custom_prep(r):
-
+            
             # Call standard prep
             if callable(standard_prep):
                 result = standard_prep(r)
             else:
                 result = True
-
+            
+            auth = current.auth
+            has_role = auth.s3_has_role
+            
             if r.controller == "dvr" and not r.component:
-
-                ctable = s3db.dvr_case
-
-                # Mandatory Fields
                 from s3 import IS_NOT_EMPTY
                 from gluon import IS_EMPTY_OR
 
-                # Require a case number
-                ctable.reference.requires = IS_NOT_EMPTY()
-
+                ctable = s3db.dvr_case
+                cttable = s3db.dvr_case_type_case 
+                
+                #General Default Values
+                s3db.pr_person_details.nationality.default = "SY"
+                s3db.pr_identity.type.default = 50
+                
                 # Require organisation, site and status
                 for fn in ("organisation_id",
-                           "site_id",
-                           "status_id",
+                           "site_id",                           
                            ):
                     field = ctable[fn]
                     requires = field.requires
@@ -326,104 +280,305 @@ def config(settings):
                 resource = r.resource
                 if r.interactive:
                     # Custom CRUD form
-                    from s3 import S3SQLCustomForm, S3SQLInlineComponent
-                    crud_form = S3SQLCustomForm(
-                                "dvr_case.reference",
-                                "dvr_case.date",
-                                "dvr_case.organisation_id",
-                                "dvr_case.site_id",
-                                "dvr_case.priority",
-                                "dvr_case.case_type_id",
-                                "dvr_case.beneficiary",
-                                "dvr_case.status_id",
-                                "first_name",
-                                "middle_name",
-                                "last_name",
-                                "date_of_birth",
-                                "gender",
-                                "person_details.marital_status",
-                                S3SQLInlineComponent(
-                                        "contact",
-                                        fields = [("", "value"),
-                                                  ],
-                                        filterby = {"field": "contact_method",
-                                                    "options": "EMAIL",
-                                                    },
-                                        label = T("Email"),
-                                        multiple = False,
-                                        name = "email",
-                                        ),
-                                S3SQLInlineComponent(
-                                        "contact",
-                                        fields = [("", "value"),
-                                                  ],
-                                        filterby = {"field": "contact_method",
-                                                    "options": "SMS",
-                                                    },
-                                        label = T("Mobile Phone"),
-                                        multiple = False,
-                                        name = "phone",
-                                        ),
-                                "person_details.nationality",
-                                "person_details.literacy",
-                                S3SQLInlineComponent(
-                                        "case_language",
-                                        fields = ["language",
-                                                  "quality",
-                                                  "comments",
-                                                  ],
-                                        label = T("Language / Communication Mode"),
-                                        ),
-                                S3SQLInlineComponent(
-                                        "contact_emergency",
-                                        fields = ["name",
-                                                  "relationship",
-                                                  "phone",
-                                                  ],
-                                        label = T("Emergency Contact"),
-                                        multiple = False,
-                                        ),
-                                S3SQLInlineComponent(
-                                        "identity",
-                                        fields = ["type",
-                                                  "description",
-                                                  "value",
-                                                  ],
-                                        ),
-                                S3SQLInlineComponent(
-                                        "address",
-                                        label = T("Current Address"),
-                                        fields = [("", "location_id"),
-                                                  ],
-                                        filterby = {"field": "type",
-                                                    "options": "1",
-                                                    },
-                                        link = False,
-                                        multiple = False,
-                                        ),
-                                "dvr_case.head_of_household",
-                                "dvr_case.hoh_name",
-                                "dvr_case.hoh_gender",
-                                "dvr_case.hoh_relationship",
-                                "dvr_case.comments",
-                                )
+                    from s3 import S3SQLCustomForm, S3SQLInlineComponent, S3SQLInlineLink
+                    if has_role("ADMIN"):                        
+                        crud_form = S3SQLCustomForm(
+                                    S3SQLInlineLink("case_type",
+                                                        field = "case_type_id",
+                                                        label = T("Record Type"),
+                                                        cols = 3,
+                                                        ),
+                                    "dvr_case.pss_reference",
+                                    "dvr_case.reference",
+                                    "dvr_case.date",
+                                    "dvr_case.organisation_id",
+                                    "dvr_case.site_id",
+                                    "dvr_case.priority",                                
+                                    "dvr_case.beneficiary",
+                                    "dvr_case.status_id",
+                                    "first_name",
+                                    "middle_name",
+                                    "last_name",
+                                    "date_of_birth",
+                                    "gender",
+                                    "person_details.marital_status",
+                                    S3SQLInlineComponent(
+                                            "contact",
+                                            fields = [("", "value"),
+                                                      ],
+                                            filterby = {"field": "contact_method",
+                                                        "options": "EMAIL",
+                                                        },
+                                            label = T("Email"),
+                                            multiple = False,
+                                            name = "email",
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "contact",
+                                            fields = [("", "value"),
+                                                      ],
+                                            filterby = {"field": "contact_method",
+                                                        "options": "SMS",
+                                                        },
+                                            label = T("Mobile Phone"),
+                                            multiple = False,
+                                            name = "phone",
+                                            ),
+                                    "person_details.nationality",
+                                    "person_details.literacy",
+                                    S3SQLInlineComponent(
+                                            "case_language",
+                                            fields = ["language",
+                                                      "quality",
+                                                      "comments",
+                                                      ],
+                                            label = T("Language / Communication Mode"),
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "contact_emergency",
+                                            fields = ["name",
+                                                      "relationship",
+                                                      "phone",
+                                                      ],
+                                            label = T("Emergency Contact"),
+                                            multiple = False,
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "identity",
+                                            fields = ["type",
+                                                      "description",
+                                                      "value",
+                                                      ],
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "address",
+                                            label = T("Current Address"),
+                                            fields = [("", "location_id"),
+                                                      ],
+                                            filterby = {"field": "type",
+                                                        "options": "1",
+                                                        },
+                                            link = False,
+                                            multiple = False,
+                                            ),
+                                    "dvr_case.head_of_household",
+                                    "dvr_case.hoh_name",
+                                    "dvr_case.hoh_gender",
+                                    "dvr_case.hoh_relationship",
+                                    "dvr_case.comments",
+                                    )
+                    elif has_role("ORG_ADMIN"):
+                        # Require fields
+                        ctable.reference.requires = IS_NOT_EMPTY()
+                        
+                        #Default Values
+                        cttable.case_type_id.default = 1
+                                               
+                        crud_form = S3SQLCustomForm(
+                                    S3SQLInlineLink("case_type",
+                                                        field = "case_type_id",
+                                                        label = T("Record Type"),
+                                                        cols = 3,
+                                                        ),                                    
+                                    "dvr_case.reference",
+                                    "dvr_case.date",
+                                    "dvr_case.organisation_id",
+                                    "dvr_case.site_id",
+                                    "dvr_case.priority",                                
+                                    "dvr_case.beneficiary",
+                                    "dvr_case.status_id",
+                                    "first_name",
+                                    "middle_name",
+                                    "last_name",
+                                    "date_of_birth",
+                                    "gender",
+                                    "person_details.marital_status",
+                                    S3SQLInlineComponent(
+                                            "contact",
+                                            fields = [("", "value"),
+                                                      ],
+                                            filterby = {"field": "contact_method",
+                                                        "options": "EMAIL",
+                                                        },
+                                            label = T("Email"),
+                                            multiple = False,
+                                            name = "email",
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "contact",
+                                            fields = [("", "value"),
+                                                      ],
+                                            filterby = {"field": "contact_method",
+                                                        "options": "SMS",
+                                                        },
+                                            label = T("Mobile Phone"),
+                                            multiple = False,
+                                            name = "phone",
+                                            ),
+                                    "person_details.nationality",
+                                    "person_details.literacy",
+                                    S3SQLInlineComponent(
+                                            "case_language",
+                                            fields = ["language",
+                                                      "quality",
+                                                      "comments",
+                                                      ],
+                                            label = T("Language / Communication Mode"),
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "contact_emergency",
+                                            fields = ["name",
+                                                      "relationship",
+                                                      "phone",
+                                                      ],
+                                            label = T("Emergency Contact"),
+                                            multiple = False,
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "identity",
+                                            fields = ["type",
+                                                      "description",
+                                                      "value",
+                                                      ],
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "address",
+                                            label = T("Current Address"),
+                                            fields = [("", "location_id"),
+                                                      ],
+                                            filterby = {"field": "type",
+                                                        "options": "1",
+                                                        },
+                                            link = False,
+                                            multiple = False,
+                                            ),
+                                    "dvr_case.head_of_household",
+                                    "dvr_case.hoh_name",
+                                    "dvr_case.hoh_gender",
+                                    "dvr_case.hoh_relationship",
+                                    "dvr_case.comments",
+                                    )
+                    elif has_role("PSS_ADMIN"):   
+                        # Require fields
+                        ctable.pss_reference.requires = IS_NOT_EMPTY()
+                        
+                        #Default Values
+                        cttable.case_type_id.default = 2
+                        
+                        crud_form = S3SQLCustomForm(
+                                    S3SQLInlineLink("case_type",
+                                                        field = "case_type_id",
+                                                        label = T("Record Type"),
+                                                        cols = 3,                                                        
+                                                        ),                                    
+                                    "dvr_case.pss_reference", 
+                                    "dvr_case.date",                                   
+                                    "dvr_case.organisation_id",
+                                    "dvr_case.site_id",
+                                    "first_name",
+                                    "middle_name",
+                                    "last_name",
+                                    "date_of_birth",
+                                    "gender",
+                                    "person_details.marital_status",
+                                    S3SQLInlineComponent(
+                                            "contact",
+                                            fields = [("", "value"),
+                                                      ],
+                                            filterby = {"field": "contact_method",
+                                                        "options": "EMAIL",
+                                                        },
+                                            label = T("Email"),
+                                            multiple = False,
+                                            name = "email",
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "contact",
+                                            fields = [("", "value"),
+                                                      ],
+                                            filterby = {"field": "contact_method",
+                                                        "options": "SMS",
+                                                        },
+                                            label = T("Mobile Phone"),
+                                            multiple = False,
+                                            name = "phone",
+                                            ),
+                                    "person_details.nationality",
+                                    "person_details.literacy",
+                                    S3SQLInlineComponent(
+                                            "case_language",
+                                            fields = ["language",
+                                                      "quality",
+                                                      "comments",
+                                                      ],
+                                            label = T("Language / Communication Mode"),
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "contact_emergency",
+                                            fields = ["name",
+                                                      "relationship",
+                                                      "phone",
+                                                      ],
+                                            label = T("Emergency Contact"),
+                                            multiple = False,
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "identity",
+                                            fields = ["type",
+                                                      "description",
+                                                      "value",
+                                                      ],
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "address",
+                                            label = T("Current Address"),
+                                            fields = [("", "location_id"),
+                                                      ],
+                                            filterby = {"field": "type",
+                                                        "options": "1",
+                                                        },
+                                            link = False,
+                                            multiple = False,
+                                            ),
+                                    "dvr_case.comments",
+                                    )
 
                     # Extend filter widgets
-                    filter_widgets = resource.get_config("filter_widgets")
-                    if filter_widgets is not None:
-                        from s3 import s3_get_filter_opts, S3OptionsFilter
-                        filter_widgets.extend([
-                            S3OptionsFilter("dvr_case.case_type_id",
-                                            options = lambda: s3_get_filter_opts("dvr_case_type"),
-                                            ),
+                    from s3 import s3_get_filter_opts, S3TextFilter, S3OptionsFilter
+                    filter_widgets = [
+                        S3TextFilter(["first_name",
+                                      "middle_name",
+                                      "last_name",
+                                      "email.value",
+                                      "phone.value",
+                                      "dvr_case.reference",
+                                      ],
+                                      label = T("Search"),
+                                      comment = T("You can search by name, ID or case number"),
+                                      ),
+                        S3OptionsFilter("dvr_case_type_case.case_type_id",
+                                        options = lambda: s3_get_filter_opts("dvr_case_type"),
+                                        none = True
+                                        )
+                    ]
+                        
+                    if has_role("ORG_ADMIN"):
+                        filter_widgets.append(
+                            S3OptionsFilter("dvr_case.status_id",
+                                    options = lambda: s3_get_filter_opts("dvr_case_status"),
+                                    cols = 3,
+                                    ), 
+                            )                        
+                        filter_widgets.append(
                             S3OptionsFilter("dvr_case_activity.need_id",
                                             options = lambda: s3_get_filter_opts("dvr_need"),
                                             hidden = True,
-                                            ),
-                            ])
+                                            )
+                            )
 
                     resource.configure(crud_form = crud_form,
                                        filter_widgets = filter_widgets,
+                                       deletable = False
                                        )
                     # Hide Postcode in addresses (not used)
                     atable = s3db.pr_address
@@ -462,28 +617,122 @@ def config(settings):
                         s3.scripts.append(path)
 
                 # Custom list fields (must be outside of r.interactive)
-                list_fields = ["dvr_case.reference",
-                               "dvr_case.case_type_id",
-                               "dvr_case.priority",
-                               "first_name",
-                               "middle_name",
-                               "last_name",
-                               "date_of_birth",
-                               "gender",
-                               #"dvr_case.organisation_id",
-                               "dvr_case.date",
-                               "dvr_case.status_id",
-                               ]
+                list_fields = ["first_name",
+                       "middle_name",
+                       "last_name",
+                       "date_of_birth",
+                       "gender",
+                       (T("Phone"), "phone.value"),
+                       (T("Email"),"email.value")
+                    ]
+                if has_role("ADMIN"):
+                    list_fields.insert(0,
+                        "dvr_case_type_case.case_type_id"
+                        )
+                    list_fields.insert(1,
+                        "dvr_case.reference"
+                        )
+                    list_fields.insert(2,
+                        "dvr_case.pss_reference"
+                        )
+                elif has_role("ORG_ADMIN"):
+                    list_fields.insert(0,
+                        "dvr_case.reference"
+                        )
+                elif has_role("PSS_ADMIN"):
+                    list_fields.insert(0,
+                        "dvr_case.pss_reference"
+                        )
+                    
                 resource.configure(list_fields = list_fields,
                                    #orderby = "dvr_case.priority desc",
                                    )
             return result
         s3.prep = custom_prep
-
+        attr["rheader"] = dvr_rheader
         return attr
 
     settings.customise_pr_person_controller = customise_pr_person_controller
+    
+    # =============================================================================
+    def dvr_rheader(r, tabs=[]):
+        """ DVR module resource headers """
+    
+        if r.representation != "html":
+            # Resource headers only used in interactive views
+            return None
 
+        auth = current.auth
+        has_role = auth.s3_has_role
+            
+        from s3 import s3_rheader_resource, S3ResourceHeader, s3_fullname
+        tablename, record = s3_rheader_resource(r)
+        if tablename != r.tablename:
+            resource = current.s3db.resource(tablename, id=record.id)
+        else:
+            resource = r.resource
+    
+        rheader = None
+        rheader_fields = []
+    
+        if record:
+            T = current.T
+    
+            if tablename == "pr_person":
+    
+                if not tabs:
+                    if has_role("ORG_ADMIN"):                        
+                        tabs = [(T("Basic Details"), None),
+                                (T("Activities"), "case_activity"),
+                                (T("Beneficiaries"), "beneficiary_data"),
+                                (T("Economy"), "economy"),
+                                (T("Service Contacts"), "case_service_contact"),
+                                (T("Training"), "training"),                        
+                                ]
+                    elif has_role("PSS_ADMIN"):
+                        tabs = [(T("Basic Details"), None),                                
+                                (T("Training"), "training"),                        
+                                ]
+    
+                case = resource.select(["dvr_case.reference",
+                                        "dvr_case.pss_reference",                                        
+                                        ],
+                                        represent=True,
+                                        ).rows
+                if case:
+                    case = case[0]
+                    case_reference = lambda row: case["dvr_case.reference"]
+                    case_pss_reference = lambda row: case["dvr_case.pss_reference"]
+                    
+                else:
+                    # Target record exists, but doesn't match filters
+                    return None
+                rheader_fields = [[("first_name"),("middle_name"),("last_name")],
+                                  [("date_of_birth")],
+                                  ]
+                if has_role("ORG_ADMIN"):
+                    rheader_fields.insert(0,[(T("Case Number"), case_reference)])
+                elif has_role("PSS_ADMIN"):
+                    rheader_fields.insert(0,[(T("PSS ID"), case_pss_reference)])
+    
+            elif tablename == "dvr_case":
+    
+                if not tabs:
+                    tabs = [(T("Basic Details"), None),
+                            (T("Activities"), "case_activity"),
+                            ]
+    
+                rheader_fields = [["reference"],
+                                  ["status_id"],
+                                  ]
+    
+            rheader = S3ResourceHeader(rheader_fields, tabs)(r,
+                                                             table=resource.table,
+                                                             record=record,
+                                                             )
+    
+        return rheader
+    
     # -------------------------------------------------------------------------
     # Comment/uncomment modules here to disable/enable them
     # Modules menu is defined in modules/eden/menu.py

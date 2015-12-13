@@ -62,6 +62,7 @@ class DVRCaseModel(S3Model):
              "dvr_case_language",
              "dvr_case_status",
              "dvr_case_type",
+             "dvr_case_type_case"
              )
 
     def model(self):
@@ -108,10 +109,23 @@ class DVRCaseModel(S3Model):
             msg_list_empty = T("No Case Types currently registered")
             )
 
-        # Represent for reference
-        case_type_represent = S3Represent(lookup = "dvr_case_type",
-                                          translate = True,
-                                          )
+        # Reusable field
+        represent = S3Represent(lookup=tablename, translate=True)
+        case_type_id = S3ReusableField("case_type_id", "reference %s" % tablename,
+                                           label = T("Case Type"),
+                                           ondelete = "RESTRICT",
+                                           represent = represent,
+                                           requires = IS_EMPTY_OR(
+                                                        IS_ONE_OF(db,
+                                                                  "dvr_case_type.id",
+                                                                  represent,
+                                                                  )),
+                                           )
+        # Table configuration
+        configure(tablename,
+                  deduplicate = S3Duplicate(),
+                  )
+        
 
         # ---------------------------------------------------------------------
         # Case Statuses
@@ -208,27 +222,12 @@ class DVRCaseModel(S3Model):
                      Field("reference",
                            label = T("Case Number"),
                            ),
+                     Field("pss_reference",
+                           label = T("PSS ID"),
+                           ),
                      person_id(empty = False,
                                ondelete = "CASCADE",
-                               ),
-                     FieldS3("case_type_id", "reference dvr_case_type",
-                             label = T("Case Type"),
-                             represent = case_type_represent,
-                             requires = IS_EMPTY_OR(IS_ONE_OF(
-                                                db, "dvr_case_type.id",
-                                                case_type_represent,
-                                                )),
-                             sortby = "name",
-                             comment = S3PopupLink(c = "dvr",
-                                                   f = "case_type",
-                                                   title = ADD_CASE_TYPE,
-                                                   tooltip = T("Choose the case type from the drop-down, or click the link to create a new type"),
-                                                   # Always look up options from dvr/case
-                                                   # (required if inline in person form):
-                                                   vars = {"parent": "case",
-                                                           },
-                                                   ),
-                             ),
+                               ),                     
                      Field("beneficiary",
                            default = "INDIVIDUAL",
                            label = T("Assistance for"),
@@ -338,9 +337,10 @@ class DVRCaseModel(S3Model):
                             dvr_need =  {"link": "dvr_case_need",
                                          "joinby": "case_id",
                                          "key": "need_id",
-                                         },
+                                         },                            
                             )
-
+                
+        
         # Report options FIXME
         #axes = ["organisation_id",
         #        "case_need.need_id",
@@ -370,6 +370,7 @@ class DVRCaseModel(S3Model):
                   onaccept = self.case_onaccept,
                   )
 
+        
         # Reusable field
         represent = S3Represent(lookup=tablename, fields=("reference",))
         case_id = S3ReusableField("case_id", "reference %s" % tablename,
@@ -380,7 +381,18 @@ class DVRCaseModel(S3Model):
                                                 IS_ONE_OF(db, "dvr_case.id",
                                                           represent)),
                                   )
-
+        # ---------------------------------------------------------------------
+        # Link table Dvr Case <=> DVR Case Types
+        #
+        tablename = "dvr_case_type_case"
+        define_table(tablename,
+                     self.pr_person_id(empty = False,
+                                       ondelete = "CASCADE",
+                                       ),
+                     case_type_id(),
+                     s3_comments(),
+                     *s3_meta_fields())
+        
         # ---------------------------------------------------------------------
         # Case Language: languages that can be used to communicate with
         #                a case beneficiary
@@ -487,7 +499,7 @@ class DVRCaseModel(S3Model):
             # New record
             record_id = None
         try:
-            reference = form_vars.reference
+            reference = form_vars.reference            
         except AttributeError:
             reference = None
 
@@ -890,6 +902,7 @@ class DVRCaseActivityModel(S3Model):
 
     names = ("dvr_case_activity",
              "dvr_case_service_contact",
+             "dvr_case_activity_type",
              )
 
     def model(self):
@@ -900,6 +913,43 @@ class DVRCaseActivityModel(S3Model):
         crud_strings = current.response.s3.crud_strings
         define_table = self.define_table
         configure = self.configure
+
+        # ---------------------------------------------------------------------
+        # Case Activity Types
+        #
+        tablename = "dvr_case_activity_type"
+        define_table(tablename,
+                     Field("name",
+                           label = T("Type"),
+                           requires = IS_NOT_EMPTY(),
+                           ),
+                     # Enable in template if/when org-specific
+                     # case types are required:
+                     self.org_organisation_id(readable=False,
+                                              writable=False,
+                                              ),
+                     s3_comments(),
+                     *s3_meta_fields())
+
+        # CRUD Strings
+        ADD_CASE_TYPE = T("Create Case Activity Type")
+        crud_strings[tablename] = Storage(
+            label_create = ADD_CASE_TYPE,
+            title_display = T("Case Activity Type"),
+            title_list = T("Case Activity Types"),
+            title_update = T("Edit Case Activity Type"),
+            label_list_button = T("List Case Activity Types"),
+            label_delete_button = T("Delete Case Activity Type"),
+            msg_record_created = T("Case Activity Type added"),
+            msg_record_modified = T("Case Activity Type updated"),
+            msg_record_deleted = T("Case Activity Type deleted"),
+            msg_list_empty = T("No Case Activity Types currently registered")
+            )
+
+        # Represent for reference
+        case_activity_type_represent = S3Represent(lookup = "dvr_case_activity_type",
+                                          translate = True,
+                                          )
 
         twoweeks = current.request.utcnow + datetime.timedelta(days=14)
 
@@ -921,6 +971,24 @@ class DVRCaseActivityModel(S3Model):
                                        ondelete = "CASCADE",
                                        writable = False,
                                        ),
+                     FieldS3("case_activity_type_id", "reference dvr_case_activity_type",
+                             label = T("Case Activity Type"),
+                             represent = case_activity_type_represent,
+                             requires = IS_EMPTY_OR(IS_ONE_OF(
+                                                db, "dvr_case_activity_type.id",
+                                                case_activity_type_represent,
+                                                )),
+                             sortby = "name",
+                             comment = S3PopupLink(c = "dvr",
+                                                   f = "case_activity_type",
+                                                   title = ADD_CASE_TYPE,
+                                                   tooltip = T("Choose the case activity type from the drop-down, or click the link to create a new type"),
+                                                   # Always look up options from dvr/case
+                                                   # (required if inline in person form):
+                                                   vars = {"parent": "case_activity",
+                                                           },
+                                                   ),
+                             ),
                      s3_date("start_date",
                              label = T("Registered on"),
                              default = "now",
@@ -1996,7 +2064,7 @@ def dvr_rheader(r, tabs=[]):
                         (T("Beneficiaries"), "beneficiary_data"),
                         (T("Economy"), "economy"),
                         (T("Service Contacts"), "case_service_contact"),
-                        (T("Identity"), "identity"),
+                        (T("Training"), "training"),                        
                         ]
 
             case = resource.select(["dvr_case.reference",
