@@ -7619,9 +7619,9 @@ def hrm_training_controller():
          - used for Adding/Editing on Profile page
     """
 
-    if current.session.s3.hrm.mode is not None:
-        current.session.error = current.T("Access denied")
-        redirect(URL(f="index"))
+    #if current.session.s3.hrm.mode is not None:
+    #    current.session.error = current.T("Access denied")
+    #    redirect(URL(f="index"))
 
     s3db = current.s3db
 
