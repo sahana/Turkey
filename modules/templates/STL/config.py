@@ -237,7 +237,7 @@ def config(settings):
                 from gluon import IS_EMPTY_OR
 
                 ctable = s3db.dvr_case
-                cttable = s3db.dvr_case_type_case 
+                cttable = s3db.dvr_case_type_case
                 
                 #General Default Values
                 s3db.pr_person_details.nationality.default = "SY"
@@ -296,8 +296,7 @@ def config(settings):
                                     "dvr_case.priority",                                
                                     "dvr_case.beneficiary",
                                     "dvr_case.status_id",
-                                    "first_name",
-                                    "middle_name",
+                                    "first_name",                                    
                                     "last_name",
                                     "date_of_birth",
                                     "gender",
@@ -378,9 +377,9 @@ def config(settings):
                                     S3SQLInlineLink("case_type",
                                                         field = "case_type_id",
                                                         label = T("Record Type"),
-                                                        cols = 3,
+                                                        cols = 3,                                                        
                                                         ),                                    
-                                    "dvr_case.reference",
+                                    "dvr_case.reference",                                    
                                     "dvr_case.date",
                                     "dvr_case.organisation_id",
                                     "dvr_case.site_id",
@@ -388,7 +387,6 @@ def config(settings):
                                     "dvr_case.beneficiary",
                                     "dvr_case.status_id",
                                     "first_name",
-                                    "middle_name",
                                     "last_name",
                                     "date_of_birth",
                                     "gender",
@@ -476,7 +474,6 @@ def config(settings):
                                     "dvr_case.organisation_id",
                                     "dvr_case.site_id",
                                     "first_name",
-                                    "middle_name",
                                     "last_name",
                                     "date_of_birth",
                                     "gender",
@@ -574,7 +571,7 @@ def config(settings):
                                             options = lambda: s3_get_filter_opts("dvr_need"),
                                             hidden = True,
                                             )
-                            )
+                            )                        
 
                     resource.configure(crud_form = crud_form,
                                        filter_widgets = filter_widgets,
