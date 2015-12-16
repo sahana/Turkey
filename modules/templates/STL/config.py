@@ -544,29 +544,21 @@ def config(settings):
                     # Extend filter widgets
                     from s3 import s3_get_filter_opts, S3TextFilter, S3OptionsFilter
                     filter_widgets = [
-                        S3TextFilter(["first_name",
-                                      "middle_name",
+                        S3TextFilter(["first_name",                                      
                                       "last_name",
                                       "email.value",
                                       "phone.value",
                                       "dvr_case.reference",
+                                      "dvr_case.pss_reference",
                                       ],
-                                      label = T("Search"),
-                                      comment = T("You can search by name, ID or case number"),
+                                      label = T("Search"),                                      
                                       ),
                         S3OptionsFilter("dvr_case_type_case.case_type_id",
-                                        options = lambda: s3_get_filter_opts("dvr_case_type"),
-                                        none = True
+                                        options = lambda: s3_get_filter_opts("dvr_case_type"),                                        
                                         )
                     ]
                         
                     if has_role("ORG_ADMIN"):
-                        filter_widgets.append(
-                            S3OptionsFilter("dvr_case.status_id",
-                                    options = lambda: s3_get_filter_opts("dvr_case_status"),
-                                    cols = 3,
-                                    ), 
-                            )                        
                         filter_widgets.append(
                             S3OptionsFilter("dvr_case_activity.need_id",
                                             options = lambda: s3_get_filter_opts("dvr_need"),
@@ -614,8 +606,7 @@ def config(settings):
                         s3.scripts.append(path)
 
                 # Custom list fields (must be outside of r.interactive)
-                list_fields = ["first_name",
-                       "middle_name",
+                list_fields = ["first_name",                       
                        "last_name",
                        "date_of_birth",
                        "gender",
