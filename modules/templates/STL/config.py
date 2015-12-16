@@ -279,6 +279,7 @@ def config(settings):
 
                 resource = r.resource
                 if r.interactive:
+
                     # Custom CRUD form
                     from s3 import S3SQLCustomForm, S3SQLInlineComponent, S3SQLInlineLink
                     if has_role("ADMIN"):                        
@@ -287,6 +288,7 @@ def config(settings):
                                                         field = "case_type_id",
                                                         label = T("Record Type"),
                                                         cols = 3,
+                                                        required=True,                                                        
                                                         ),
                                     "dvr_case.pss_reference",
                                     "dvr_case.reference",

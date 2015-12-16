@@ -76,7 +76,7 @@ class S3OptionsMenu(default.S3OptionsMenu):
             return M(c="dvr")(
                     M("All Records", c=("dvr", "pr"), f="person")(
                         M("Create", m="create"),
-                        M("Case Activities", f="case_activity"),
+                        M("Case Activities", f="case_activity"),                        
                     ),
                     M("Case Types", f="case_type")(
                         M("Create", m="create"),

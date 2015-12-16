@@ -8,7 +8,10 @@ except:
     from gluon.contrib.simplejson.ordered_dict import OrderedDict
 
 from gluon import current
+from gluon.html import A, DIV, LI, URL, TAG, TD, TR, UL
 from gluon.storage import Storage
+
+from s3 import S3SQLSubFormLayout, s3_unicode
 
 def config(settings):
     """
@@ -177,6 +180,45 @@ def config(settings):
     settings.req.requester_to_site = True
 
     # -------------------------------------------------------------------------
+    def customise_org_facility_resource(r, tablename):
+
+        from s3 import S3LocationFilter, S3OptionsFilter, S3TextFilter
+
+        filter_widgets = [
+            S3TextFilter(["name"],
+                         label = T("Search"),
+                         comment = T("Search by facility name. You can use * as wildcard."),
+                         ),
+            S3OptionsFilter("site_facility_type.facility_type_id",
+                            ),
+            S3OptionsFilter("organisation_id",
+                            ),
+            S3LocationFilter("location_id",
+                             ),
+            ]
+
+        s3db = current.s3db
+
+        s3db.configure(tablename,
+                       filter_widgets = filter_widgets,
+                       )
+
+        # Customize fields
+        table = s3db.org_facility
+
+        # Main facility flag visible and in custom crud form
+        field = table.main_facility
+        field.readable = field.writable = True
+        crud_form = s3db.get_config(tablename, "crud_form")
+        crud_form.insert(-2, "main_facility")
+
+        # "Obsolete" labeled as "inactive"
+        field = table.obsolete
+        field.label = T("Inactive")
+
+    settings.customise_org_facility_resource = customise_org_facility_resource
+
+    # -------------------------------------------------------------------------
     def customise_org_organisation_resource(r, tablename):
 
         s3db = current.s3db
@@ -222,7 +264,10 @@ def config(settings):
             ]
 
         # CRUD Form
-        from s3 import S3SQLCustomForm, S3SQLInlineLink
+        from s3 import S3SQLCustomForm, \
+                       S3SQLInlineComponent, \
+                       S3SQLInlineLink, \
+                       S3SQLVerticalSubFormLayout
         multitype = settings.get_org_organisation_types_multiple()
         crud_form = S3SQLCustomForm("name",
                                     "acronym",
@@ -238,9 +283,25 @@ def config(settings):
                                             cols = 3,
                                             label = T("Sectors"),
                                             field = "sector_id",
+                                            #required = True,
                                             ),
                                     (T("About"), "comments"),
                                     "website",
+                                    S3SQLInlineComponent(
+                                            "facility",
+                                            label = T("Main Facility"),
+                                            fields = ["name",
+                                                      "phone1",
+                                                      "phone2",
+                                                      "email",
+                                                      "location_id",
+                                                      ],
+                                            layout = S3SQLVerticalSubFormLayout,
+                                            filterby = {"field": "main_facility",
+                                                        "options": True,
+                                                        },
+                                            multiple = False,
+                                            ),
                                     )
 
         s3db.configure("org_organisation",
@@ -265,6 +326,58 @@ def config(settings):
 
     settings.customise_org_organisation_location_resource = customise_org_organisation_location_resource
     # -------------------------------------------------------------------------
+    def customise_org_service_location_resource(r, tablename):
+
+        table = current.s3db.org_service_location
+
+        # Hide site_id
+        field = table.site_id
+        field.readable = field.writable = False
+
+        # Enable location_id
+        from s3 import S3LocationSelector
+        field = table.location_id
+        field.readable = field.writable = True
+        #field.widget = S3LocationSelector(levels = ["L1", "L2", "L3", "L4"],
+        #                                  show_postcode = False,
+        #                                  show_map = False,
+        #                                  )
+
+        # Custom CRUD form
+        from s3 import S3SQLCustomForm, S3SQLInlineLink
+        crud_form = S3SQLCustomForm(
+                        "organisation_id",
+                        "location_id",
+                        S3SQLInlineLink("service",
+                                        label = T("Services"),
+                                        field = "service_id",
+                                        ),
+                        #"description",
+                        "status",
+                        "start_date",
+                        #"end_date",
+                        "comments",
+                        )
+
+        # List fields
+        list_fields = ["organisation_id",
+                       "location_id",
+                       "service_location_service.service_id",
+                       #"description",
+                       "status",
+                       "start_date",
+                       #"end_date",
+                       "comments",
+                       ]
+
+        # Configure
+        current.s3db.configure("org_service_location",
+                               crud_form = crud_form,
+                               list_fields = list_fields,
+                               )
+
+    settings.customise_org_service_location_resource = customise_org_service_location_resource
+    # -------------------------------------------------------------------------
     def customise_org_organisation_controller(**attr):
 
         # Custom rheader and tabs
@@ -274,6 +387,130 @@ def config(settings):
         return attr
 
     settings.customise_org_organisation_controller = customise_org_organisation_controller
+
+    # -------------------------------------------------------------------------
+    # Contacts
+    #
+    settings.pr.request_dob = False
+    settings.pr.contacts_tabs = None
+
+    settings.hrm.use_id = False
+    settings.hrm.use_description = None
+    settings.hrm.use_address = False
+    settings.hrm.use_trainings = False
+    settings.hrm.use_certificates = False
+    settings.hrm.record_tab = False
+
+    settings.hrm.compose_button = False
+
+    # -------------------------------------------------------------------------
+    def customise_hrm_human_resource_resource(r, tablename):
+
+        s3db = current.s3db
+
+        if r.interactive:
+            # Custom CRUD form
+            from s3 import S3SQLCustomForm
+            crud_form = S3SQLCustomForm("organisation_id",
+                                        "person_id",
+                                        "job_title_id",
+                                        "department_id",
+                                        )
+            s3db.configure("hrm_human_resource",
+                           crud_form = crud_form,
+                           )
+
+        # Custom list fields
+        list_fields = ["person_id",
+                       "job_title_id",
+                       "department_id",
+                       (T("Email"), "person_id$email.value"),
+                       (T("Mobile Phone"), "person_id$phone.value"),
+                       ]
+
+        # Configure table
+        s3db.configure("hrm_human_resource",
+                       list_fields = list_fields,
+                       )
+
+    settings.customise_hrm_human_resource_resource = customise_hrm_human_resource_resource
+
+    # -------------------------------------------------------------------------
+    def customise_pr_person_controller(**attr):
+
+        s3db = current.s3db
+        s3 = current.response.s3
+
+        settings = current.deployment_settings
+
+        # Custom prep
+        standard_prep = s3.prep
+        def custom_prep(r):
+
+            # Call standard prep
+            if callable(standard_prep):
+                result = standard_prep(r)
+            else:
+                result = True
+
+            resource = r.resource
+
+            if r.controller == "hrm":
+
+                if r.interactive and not r.component:
+
+                    MOBILE = settings.get_ui_label_mobile_phone()
+
+                    # Custom form for contacts
+                    from s3 import S3SQLCustomForm, \
+                                   S3SQLInlineComponent, \
+                                   S3SQLVerticalSubFormLayout
+                    crud_form = S3SQLCustomForm(
+                                    "first_name",
+                                    "last_name",
+                                    S3SQLInlineComponent(
+                                            "human_resource",
+                                            name = "human_resource",
+                                            label = "",
+                                            multiple = False,
+                                            fields = ["organisation_id",
+                                                      "job_title_id",
+                                                      "department_id",
+                                                      ],
+                                            layout = S3SQLVerticalSubFormLayout,
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "contact",
+                                            name = "email",
+                                            label = T("Email"),
+                                            multiple = False,
+                                            fields = [("", "value"),
+                                                      ],
+                                            filterby = [{"field": "contact_method",
+                                                         "options": "EMAIL",
+                                                         },
+                                                        ],
+                                            ),
+                                    S3SQLInlineComponent(
+                                            "contact",
+                                            name = "phone",
+                                            label = MOBILE,
+                                            multiple = False,
+                                            fields = [("", "value"),
+                                                      ],
+                                            filterby = [{"field": "contact_method",
+                                                         "options": "SMS",
+                                                         },
+                                                        ],
+                                            ),
+                                    )
+                    resource.configure(crud_form = crud_form)
+            return result
+        s3.prep = custom_prep
+
+        return attr
+
+    settings.customise_pr_person_controller = customise_pr_person_controller
 
     # -------------------------------------------------------------------------
     # Comment/uncomment modules here to disable/enable them
@@ -389,12 +626,12 @@ def config(settings):
             restricted = True,
             module_type = 2,
         )),
-        #("project", Storage(
-        #    name_nice = T("Projects"),
-        #    #description = "Tracking of Projects, Activities and Tasks",
-        #    restricted = True,
-        #    module_type = 2
-        #)),
+        ("project", Storage(
+           name_nice = T("Projects"),
+           #description = "Tracking of Projects, Activities and Tasks",
+           restricted = True,
+           module_type = 2
+        )),
         #("event", Storage(
         #    name_nice = T("Events"),
         #    #description = "Activate Events (e.g. from Scenario templates) for allocation of appropriate Resources (Human, Assets & Facilities).",
@@ -443,8 +680,9 @@ def mavc_rheader(r, tabs=None):
 
             tabs = [(T("About"), None),
                     (INDIVIDUALS, "human_resource"),
-                    (T("Service Locations"), "service_location"),
-                    # @todo: activities
+                    (T("Services"), "service_location"),
+                    (T("Facilities"), "facility"),
+                    (T("Projects"), "project"),
                     ]
 
         # Use OrganisationRepresent for title to get L10n name if available
@@ -453,14 +691,28 @@ def mavc_rheader(r, tabs=None):
                                                    )
         title = represent(record.id)
 
-        # Retrieve other details for the rheader
+        # Retrieve details for the rheader
         data = resource.select(["organisation_organisation_type.organisation_type_id",
+                                "country",
                                 "website",
                                 ],
+                               raw_data = True,
                                represent = True,
                                )
         row = data.rows[0]
-        subtitle = row["org_organisation_organisation_type.organisation_type_id"]
+        raw = row["_row"]
+
+        # Construct subtitle
+        subtitle_fields = ("org_organisation_organisation_type.organisation_type_id",
+                           "org_organisation.country",
+                           )
+        items = []
+        for fname in subtitle_fields:
+            if raw[fname]:
+                items.append(s3_unicode(row[fname]))
+        subtitle = ", ".join(items)
+
+        # Website
         website = row["org_organisation.website"]
 
         # Compile the rheader

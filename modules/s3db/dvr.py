@@ -277,7 +277,7 @@ class DVRCaseModel(S3Model):
                            default = False,
                            label = T("Archived"),
                            represent = s3_yes_no_represent,
-                           # Enable in template if required:
+                           # Enabled in controller:
                            readable = False,
                            writable = False,
                            ),
@@ -912,7 +912,7 @@ class DVRCaseActivityModel(S3Model):
 
         crud_strings = current.response.s3.crud_strings
         define_table = self.define_table
-        configure = self.configure
+        configure = self.configure        
 
         # ---------------------------------------------------------------------
         # Case Activity Types
@@ -950,6 +950,14 @@ class DVRCaseActivityModel(S3Model):
         case_activity_type_represent = S3Represent(lookup = "dvr_case_activity_type",
                                           translate = True,
                                           )
+        
+        # Case Activity priority options
+        # => tuple list to enforce widget order
+        # => numeric key so it can be sorted by
+        case_activity_priority_opts = ((3, T("High")),
+                              (2, T("Medium")),
+                              (1, T("Low")),
+                              )
 
         twoweeks = current.request.utcnow + datetime.timedelta(days=14)
 
