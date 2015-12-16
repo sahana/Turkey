@@ -243,6 +243,7 @@ def config(settings):
                 s3db.pr_person_details.nationality.default = "SY"
                 s3db.pr_identity.type.default = 50
                 
+                
                 # Require organisation, site and status
                 for fn in ("organisation_id",
                            "site_id",                           
@@ -282,7 +283,9 @@ def config(settings):
 
                     # Custom CRUD form
                     from s3 import S3SQLCustomForm, S3SQLInlineComponent, S3SQLInlineLink
-                    if has_role("ADMIN"):                        
+                    deletable = False
+                    if has_role("ADMIN"):   
+                        deletable = True                     
                         crud_form = S3SQLCustomForm(
                                     S3SQLInlineLink("case_type",
                                                         field = "case_type_id",
@@ -295,9 +298,6 @@ def config(settings):
                                     "dvr_case.date",
                                     "dvr_case.organisation_id",
                                     "dvr_case.site_id",
-                                    "dvr_case.priority",                                
-                                    "dvr_case.beneficiary",
-                                    "dvr_case.status_id",
                                     "first_name",                                    
                                     "last_name",
                                     "date_of_birth",
@@ -379,15 +379,13 @@ def config(settings):
                                     S3SQLInlineLink("case_type",
                                                         field = "case_type_id",
                                                         label = T("Record Type"),
-                                                        cols = 3,                                                        
+                                                        cols = 3, 
+                                                        required=True,                                                       
                                                         ),                                    
                                     "dvr_case.reference",                                    
                                     "dvr_case.date",
                                     "dvr_case.organisation_id",
                                     "dvr_case.site_id",
-                                    "dvr_case.priority",                                
-                                    "dvr_case.beneficiary",
-                                    "dvr_case.status_id",
                                     "first_name",
                                     "last_name",
                                     "date_of_birth",
@@ -469,7 +467,8 @@ def config(settings):
                                     S3SQLInlineLink("case_type",
                                                         field = "case_type_id",
                                                         label = T("Record Type"),
-                                                        cols = 3,                                                        
+                                                        cols = 3,   
+                                                        required=True,                                                     
                                                         ),                                    
                                     "dvr_case.pss_reference", 
                                     "dvr_case.date",                                   
@@ -577,7 +576,7 @@ def config(settings):
 
                     resource.configure(crud_form = crud_form,
                                        filter_widgets = filter_widgets,
-                                       deletable = False
+                                       deletable = deletable
                                        )
                     # Hide Postcode in addresses (not used)
                     atable = s3db.pr_address
@@ -600,8 +599,7 @@ def config(settings):
                         s3.jquery_ready.append(script)
 
                     # Expose additional case fields:
-                    fields = ("beneficiary",
-                              "head_of_household",
+                    fields = ("head_of_household",
                               "hoh_name",
                               "hoh_gender",
                               "hoh_relationship"
@@ -646,12 +644,197 @@ def config(settings):
                 resource.configure(list_fields = list_fields,
                                    #orderby = "dvr_case.priority desc",
                                    )
+                
+            elif r.controller == "dvr" and r.component_name == "case_activity":
+                
+                s3db.dvr_case_activity.completed.writable = s3db.dvr_case_activity.completed.readable = False
+                
+                #Customize Case Activity Tab
+                s3db.configure("dvr_case_activity",
+                               list_fields = ["case_activity_type_id",
+                                              "priority",
+                                              "status",                                              
+                                              "start_date",
+                                              "need_id",                                              
+                                              "followup",
+                                              "followup_date"
+                                              ],
+                               )
+            elif r.controller == "dvr" and r.component_name == "training":                                
+                #Customize Training Tab
+                s3db.configure("hrm_training",  
+                               list_fields = ["course_id",
+                                              "training_event_id$name",
+                                              "training_event_id$start_date",
+                                              "training_event_id$end_date"
+                                ],
+                               )
             return result
         s3.prep = custom_prep
         attr["rheader"] = dvr_rheader
         return attr
 
     settings.customise_pr_person_controller = customise_pr_person_controller
+    
+    # -------------------------------------------------------------------------
+    def customise_dvr_case_activity_controller(**attr):
+        # Custom RHeader
+        s3 = current.response.s3
+        standard_prep = s3.prep  
+        def custom_prep(r):
+            # Call standard prep
+            if callable(standard_prep):
+                result = standard_prep(r)
+            else:
+                result = True
+            if r.controller == "dvr":
+                s3db = current.s3db
+                
+                from s3 import s3_get_filter_opts, S3TextFilter, S3OptionsFilter, S3DateFilter
+                gender_opts = dict(s3db.pr_gender_opts)
+                filter_widgets = [
+                    S3TextFilter(["person_id$first_name",                                  
+                                  "person_id$last_name",                                  
+                                  "case_id$reference",
+                                  ],
+                                  label = T("Search"),
+                                  comment = T("You can search by name, case number"),
+                                  ),
+                    S3OptionsFilter("case_activity_type_id",
+                                    options = lambda: s3_get_filter_opts("dvr_case_activity_type"),
+                                    hidden = True,
+                                    ),
+                    S3OptionsFilter("person_id$gender",   
+                                    options = gender_opts,                                 
+                                    hidden = True,
+                                    ),                    
+                    S3OptionsFilter("followup",                                      
+                                      options = {True: T("Yes"),
+                                                 False: T("No"),
+                                                 },
+                                      cols = 2,
+                                      hidden = True,
+                                      ),
+                    S3DateFilter("followup_date",
+                                       cols = 2,
+                                       hidden = True,
+                                       ),
+                    S3DateFilter("person_id$date_of_birth",
+                                       cols = 2,
+                                       hidden = True,
+                                       ),
+                    S3DateFilter("start_date",
+                                       cols = 2,
+                                       hidden = True,
+                                       ),
+                ]
+                list_fields = ["case_id$reference",
+                               "person_id",
+                               "case_activity_type_id",
+                               "need_id",
+                               "need_details",
+                               "status",
+                               "priority",
+                               "followup",
+                               "followup_date",
+                               ]
+                s3db.configure("dvr_case_activity",
+                               list_fields = list_fields,
+                               filter_widgets = filter_widgets,
+                               )  
+                                                                
+            return result
+        
+        s3.prep = custom_prep
+        return attr
+
+    settings.customise_dvr_case_activity_controller = customise_dvr_case_activity_controller
+    
+    # =============================================================================
+    def customise_hrm_training_event_controller(**attr):
+        """ Configure hrm_training_contyroller """  
+        s3 = current.response.s3
+        standard_prep = s3.prep  
+        
+        def custom_prep(r):
+            # Call standard prep
+            if callable(standard_prep):
+                result = standard_prep(r)
+            else:
+                result = True
+            
+            if r.controller == "dvr":
+                from s3 import IS_NOT_EMPTY
+                s3db = current.s3db
+                s3db.hrm_training_event.name.readable = s3db.hrm_training_event.name.writable = True
+                s3db.hrm_training_event.name.requires = IS_NOT_EMPTY() 
+                
+                s3db.configure("hrm_training",
+                       )
+                                                                
+            return result
+        
+        s3.prep = custom_prep  
+        return attr
+    
+    settings.customise_hrm_training_event_controller = customise_hrm_training_event_controller
+    
+    # =============================================================================
+    def customise_hrm_training_controller(**attr):
+        """ Configure hrm_training_contyroller """  
+        s3 = current.response.s3
+        standard_prep = s3.prep  
+        
+        def custom_prep(r):
+            # Call standard prep
+            if callable(standard_prep):
+                result = standard_prep(r)
+            else:
+                result = True
+            
+            if r.controller == "dvr":
+                s3db = current.s3db
+                
+                from s3 import s3_get_filter_opts, S3TextFilter, S3OptionsFilter, S3DateFilter
+                filter_widgets = [
+                    S3TextFilter(["person_id$first_name",                                  
+                                  "person_id$last_name", 
+                                  "training_event_id$name"                                 
+                                  ],
+                                  label = T("Search"),                                  
+                                  ),
+                    S3OptionsFilter("course_id",
+                                    options = lambda: s3_get_filter_opts("hrm_course"),
+                                    hidden = True,                                    
+                                    ),
+                    S3OptionsFilter("training_event_id$site_id",                                    
+                                    hidden = True,                                    
+                                    ),
+                    S3DateFilter("training_event_id$start_date",
+                                       cols = 2,
+                                       hidden = True,
+                                       ),
+                ]
+                
+                s3db.configure("hrm_training",
+                        list_fields = ["person_id$person_id:dvr_case.pss_reference",                                       
+                                       "person_id",
+                                       "person_id$gender",
+                                       "person_id$age",
+                                       "course_id",
+                                       "training_event_id$name",
+                                       "training_event_id$start_date",
+                                       "training_event_id$end_date"                                    
+                                       ],
+                        filter_widgets = filter_widgets,
+                       )
+                                                                
+            return result
+        
+        s3.prep = custom_prep  
+        return attr
+    
+    settings.customise_hrm_training_controller = customise_hrm_training_controller
     
     # =============================================================================
     def dvr_rheader(r, tabs=[]):
