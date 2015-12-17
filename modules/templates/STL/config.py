@@ -761,6 +761,21 @@ def config(settings):
                 s3db.hrm_training_event.name.requires = IS_NOT_EMPTY() 
                 
                 s3db.configure("hrm_training",
+                        list_fields = ["person_id$person_id:dvr_case.pss_reference",                                       
+                                       "person_id",
+                                       "person_id$gender",
+                                       "person_id$age",
+                                       ],
+                       )
+                s3db.configure("hrm_training_event",
+                        list_fields = ["course_id$code",
+                                       "course_id",
+                                       "name",
+                                       "start_date",
+                                       "end_date",
+                                       "hours",
+                                       "instructor",                                                                
+                                       ],
                        )
                                                                 
             return result
