@@ -895,7 +895,7 @@ def config(settings):
                 else:
                     # Target record exists, but doesn't match filters
                     return None
-                rheader_fields = [[("first_name"),("middle_name"),("last_name")],
+                rheader_fields = [[("first_name"),("last_name")],
                                   [("date_of_birth")],
                                   ]
                 if has_role("ORG_ADMIN"):
