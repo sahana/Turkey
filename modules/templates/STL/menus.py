@@ -27,7 +27,8 @@ class S3MainMenu(default.S3MainMenu):
                 homepage(),
                 MM("Case/PSS Management", c=("dvr", "pr")),
                 #homepage("gis"),
-                homepage("org"),                
+                homepage("org"),
+                homepage("gis"),             
             ]
         elif has_role("PSS_ADMIN"):
             main_menu = [
