@@ -303,17 +303,17 @@ def config(settings):
                                     "date_of_birth",
                                     "gender",
                                     "person_details.marital_status",
-                                    S3SQLInlineComponent(
-                                            "contact",
-                                            fields = [("", "value"),
-                                                      ],
-                                            filterby = {"field": "contact_method",
-                                                        "options": "EMAIL",
-                                                        },
-                                            label = T("Email"),
-                                            multiple = False,
-                                            name = "email",
-                                            ),
+                                    #S3SQLInlineComponent(
+                                    #        "contact",
+                                    #        fields = [("", "value"),
+                                    #                  ],
+                                    #        filterby = {"field": "contact_method",
+                                    #                    "options": "EMAIL",
+                                    #                    },
+                                    #        label = T("Email"),
+                                    #        multiple = False,
+                                    #        name = "email",
+                                    #        ),
                                     S3SQLInlineComponent(
                                             "contact",
                                             fields = [("", "value"),
@@ -373,7 +373,7 @@ def config(settings):
                         ctable.reference.requires = IS_NOT_EMPTY()
                         
                         #Default Values
-                        cttable.case_type_id.default = 1
+                        cttable.case_type_id.default = 2
                                                
                         crud_form = S3SQLCustomForm(
                                     S3SQLInlineLink("case_type",
@@ -390,18 +390,7 @@ def config(settings):
                                     "last_name",
                                     "date_of_birth",
                                     "gender",
-                                    "person_details.marital_status",
-                                    S3SQLInlineComponent(
-                                            "contact",
-                                            fields = [("", "value"),
-                                                      ],
-                                            filterby = {"field": "contact_method",
-                                                        "options": "EMAIL",
-                                                        },
-                                            label = T("Email"),
-                                            multiple = False,
-                                            name = "email",
-                                            ),
+                                    "person_details.marital_status",                                    
                                     S3SQLInlineComponent(
                                             "contact",
                                             fields = [("", "value"),
@@ -461,7 +450,7 @@ def config(settings):
                         ctable.pss_reference.requires = IS_NOT_EMPTY()
                         
                         #Default Values
-                        cttable.case_type_id.default = 2
+                        cttable.case_type_id.default = 1
                         
                         crud_form = S3SQLCustomForm(
                                     S3SQLInlineLink("case_type",
@@ -478,18 +467,7 @@ def config(settings):
                                     "last_name",
                                     "date_of_birth",
                                     "gender",
-                                    "person_details.marital_status",
-                                    S3SQLInlineComponent(
-                                            "contact",
-                                            fields = [("", "value"),
-                                                      ],
-                                            filterby = {"field": "contact_method",
-                                                        "options": "EMAIL",
-                                                        },
-                                            label = T("Email"),
-                                            multiple = False,
-                                            name = "email",
-                                            ),
+                                    "person_details.marital_status",                                    
                                     S3SQLInlineComponent(
                                             "contact",
                                             fields = [("", "value"),
@@ -550,12 +528,22 @@ def config(settings):
                                       "phone.value",
                                       "dvr_case.reference",
                                       "dvr_case.pss_reference",
+                                      "pr_identity.value"
                                       ],
                                       label = T("Search"),                                      
                                       ),
                         S3OptionsFilter("dvr_case_type_case.case_type_id",
                                         options = lambda: s3_get_filter_opts("dvr_case_type"),                                        
-                                        )
+                                        ),
+                        S3OptionsFilter("age_group",
+                                        hidden = True,                                        
+                                        ),
+                        S3OptionsFilter("case_language.language",
+                                        hidden = True,                                        
+                                        ),
+                        S3OptionsFilter("person_details.literacy",
+                                        hidden = True,                                        
+                                        ),
                     ]
                         
                     if has_role("ORG_ADMIN"):

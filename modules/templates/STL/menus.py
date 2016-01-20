@@ -77,7 +77,8 @@ class S3OptionsMenu(default.S3OptionsMenu):
             return M(c="dvr")(
                     M("All Records", c=("dvr", "pr"), f="person")(
                         M("Create", m="create"),
-                        M("Case Activities", f="case_activity"),                        
+                        M("Case Activities", f="case_activity"),
+                        M("Case Activity Report", f="case_activity", m="report"),                        
                     ),
                     M("Case Types", f="case_type")(
                         M("Create", m="create"),
@@ -108,8 +109,7 @@ class S3OptionsMenu(default.S3OptionsMenu):
         elif has_role("PSS_ADMIN"):
             return M(c="dvr")(
                     M("All Records", c=("dvr", "pr"), f="person")(
-                        M("Create", m="create"),
-                        M("Case Activities", f="case_activity"),
+                        M("Create", m="create"),                        
                     ),
                     M("Training Course Catalog", f="course",)(
                         M("Create", m="create"),
@@ -123,6 +123,8 @@ class S3OptionsMenu(default.S3OptionsMenu):
             return M(c="dvr")(
                     M("All Records", c=("dvr", "pr"), f="person")(
                         M("Create", m="create"),
+                        M("Case Activities", f="case_activity"),
+                        M("Case Activity Report", f="case_activity", m="report"),
                     ),                    
                     M("Case Activity Types", f="case_activity_type")(
                         M("Create", m="create"),
