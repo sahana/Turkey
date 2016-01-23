@@ -1065,7 +1065,7 @@ class DVRCaseActivityModel(S3Model):
                      s3_date("followup_date",
                              default = twoweeks,
                              label = T("Date for Follow-up"),
-                             past = 0,
+                             past = 1,
                              ),
                      # @todo: provide options lookup?
                      Field("outcome",
